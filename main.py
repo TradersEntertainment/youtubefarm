@@ -43,8 +43,9 @@ class YouTubeDownloader:
             channels = [ch.strip() for ch in channels_env.split(",")]
         
         if not channels:
+            # Stable channel ID format - more reliable than @handle
             channels = [
-                "https://www.youtube.com/@MrBeast"
+                "https://www.youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA"
             ]
         
         return channels
@@ -175,9 +176,22 @@ class YouTubeDownloader:
     def get_channel_latest_videos(self, channel_url):
         logger.info(f"Kanal kontrol ediliyor: {channel_url}")
         
-        # Kanal URL'ine /videos ekle
-        if not channel_url.endswith("/videos"):
-            channel_url = channel_url.rstrip("/") + "/videos"
+        # Handle URL warning
+        if "/@" in channel_url:
+            logger.warning("Handle URL tespit edildi. Daha stabil bir 'channel' veya 'c/' URL kullanilmasi onerilir.")
+        
+        # Safe /videos addition with format detection
+        if "/channel/" in channel_url:
+            if not channel_url.endswith("/videos"):
+                channel_url = channel_url.rstrip("/") + "/videos"
+        elif "/c/" in channel_url:
+            if not channel_url.endswith("/videos"):
+                channel_url = channel_url.rstrip("/") + "/videos"
+        elif "/@" in channel_url:
+            if not channel_url.endswith("/videos"):
+                channel_url = channel_url.rstrip("/") + "/videos"
+        
+        logger.info(f"Final URL: {channel_url}")
         
         ydl_opts = {
             "quiet": True,
