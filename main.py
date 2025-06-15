@@ -100,17 +100,20 @@ class YouTubeDownloader:
         ydl_opts = {
             "quiet": True,
             "no_warnings": True,
-            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "user_agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android", "web"],
-                    "player_skip": ["webpage"]
+                    "player_client": ["android"],
+                    "player_skip": ["webpage", "configs"],
+                    "skip": ["hls", "dash"]
                 }
             },
             "http_headers": {
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Language": "en-us,en;q=0.5",
-                "Sec-Fetch-Mode": "navigate"
+                "User-Agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
+                "Accept": "*/*",
+                "Accept-Encoding": "gzip, deflate",
+                "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
+                "X-Goog-Api-Key": "AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w"
             }
         }
         
@@ -136,17 +139,20 @@ class YouTubeDownloader:
             "writesubtitles": True,
             "writeautomaticsub": True,
             "subtitleslangs": ["tr", "en"],
-            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "user_agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android", "web"],
-                    "player_skip": ["webpage"]
+                    "player_client": ["android"],
+                    "player_skip": ["webpage", "configs"],
+                    "skip": ["hls", "dash"]
                 }
             },
             "http_headers": {
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Language": "en-us,en;q=0.5",
-                "Sec-Fetch-Mode": "navigate"
+                "User-Agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
+                "Accept": "*/*",
+                "Accept-Encoding": "gzip, deflate",
+                "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
+                "X-Goog-Api-Key": "AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w"
             }
         }
         
@@ -178,17 +184,19 @@ class YouTubeDownloader:
             "no_warnings": True,
             "extract_flat": True,
             "playlistend": self.max_videos,
-            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "user_agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android", "web"],
-                    "player_skip": ["webpage"]
+                    "player_client": ["android"],
+                    "player_skip": ["webpage", "configs"],
+                    "skip": ["hls", "dash"]
                 }
             },
             "http_headers": {
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Language": "en-us,en;q=0.5",
-                "Sec-Fetch-Mode": "navigate"
+                "User-Agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
+                "Accept": "*/*",
+                "Accept-Encoding": "gzip, deflate",
+                "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8"
             }
         }
         
@@ -248,20 +256,25 @@ class YouTubeDownloader:
             try:
                 videos = self.get_channel_latest_videos(channel_url)
                 
+                # Kanal listesi alındıktan sonra kısa bekleme
+                time.sleep(3)
+                
                 for video in videos:
                     video_id = video["id"]
                     
                     if video_id not in downloaded_videos:
                         logger.info(f"Yeni video bulundu: {video['title']}")
                         
+                        # Video bilgisini almadan önce bekleme
+                        time.sleep(2)
                         video_info = self.get_video_info(video["url"])
                         
                         if self.download_video(video["url"], video_info):
                             self.save_downloaded_video(video_id)
                             new_downloads += 1
                             
-                            # Daha uzun bekleme süresi - bot algılamasını azaltır
-                            time.sleep(10)
+                            # Çok uzun bekleme süresi - bot algılamasını azaltır
+                            time.sleep(15)
                     else:
                         logger.debug(f"Video zaten indirilmis: {video['title']}")
                         
