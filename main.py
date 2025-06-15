@@ -100,6 +100,18 @@ class YouTubeDownloader:
         ydl_opts = {
             "quiet": True,
             "no_warnings": True,
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "web"],
+                    "player_skip": ["webpage"]
+                }
+            },
+            "http_headers": {
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-us,en;q=0.5",
+                "Sec-Fetch-Mode": "navigate"
+            }
         }
         
         try:
@@ -124,6 +136,18 @@ class YouTubeDownloader:
             "writesubtitles": True,
             "writeautomaticsub": True,
             "subtitleslangs": ["tr", "en"],
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "web"],
+                    "player_skip": ["webpage"]
+                }
+            },
+            "http_headers": {
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-us,en;q=0.5",
+                "Sec-Fetch-Mode": "navigate"
+            }
         }
         
         try:
@@ -154,6 +178,18 @@ class YouTubeDownloader:
             "no_warnings": True,
             "extract_flat": True,
             "playlistend": self.max_videos,
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "web"],
+                    "player_skip": ["webpage"]
+                }
+            },
+            "http_headers": {
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-us,en;q=0.5",
+                "Sec-Fetch-Mode": "navigate"
+            }
         }
         
         try:
@@ -224,7 +260,8 @@ class YouTubeDownloader:
                             self.save_downloaded_video(video_id)
                             new_downloads += 1
                             
-                            time.sleep(5)
+                            # Daha uzun bekleme süresi - bot algılamasını azaltır
+                            time.sleep(10)
                     else:
                         logger.debug(f"Video zaten indirilmis: {video['title']}")
                         
