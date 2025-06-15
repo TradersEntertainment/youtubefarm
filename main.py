@@ -44,8 +44,7 @@ class YouTubeDownloader:
         
         if not channels:
             channels = [
-                "https://www.youtube.com/@MrBeast",
-                "https://www.youtube.com/@MrBeast6000"
+                "https://www.youtube.com/@MrBeast"
             ]
         
         return channels
@@ -146,6 +145,10 @@ class YouTubeDownloader:
     def get_channel_latest_videos(self, channel_url):
         logger.info(f"Kanal kontrol ediliyor: {channel_url}")
         
+        # Kanal URL'ine /videos ekle
+        if not channel_url.endswith("/videos"):
+            channel_url = channel_url.rstrip("/") + "/videos"
+        
         ydl_opts = {
             "quiet": True,
             "no_warnings": True,
@@ -159,7 +162,8 @@ class YouTubeDownloader:
                 if "entries" in info:
                     videos = []
                     for entry in info["entries"][:self.max_videos]:
-                        if entry:
+                        if entry and entry.get("id") and len(entry.get("id", "")) == 11:
+                            # Sadece 11 karakter olan video ID'lerini al
                             videos.append({
                                 "id": entry.get("id"),
                                 "title": entry.get("title"),
