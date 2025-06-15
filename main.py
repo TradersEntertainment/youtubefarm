@@ -3,6 +3,8 @@ import sys
 import time
 import json
 import logging
+import requests
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
 import yt_dlp
@@ -98,11 +100,17 @@ class YouTubeDownloader:
         print("="*60 + "\n")
     
     def get_video_info(self, url):
+        # Sadece Android client - en basit yöntem
         ydl_opts = {
             "quiet": True,
             "no_warnings": True,
-            "cookies_from_browser": ("chrome", None, None, None),
-            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "user_agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android"],
+                    "player_skip": ["webpage", "configs"]
+                }
+            }
         }
         
         try:
@@ -111,32 +119,14 @@ class YouTubeDownloader:
                 return info
         except Exception as e:
             logger.error(f"Video bilgisi alinamadi {url}: {e}")
-            # Fallback without cookies
-            try:
-                logger.info("Cookie'siz deneme yapiliyor...")
-                ydl_opts_fallback = {
-                    "quiet": True,
-                    "no_warnings": True,
-                    "user_agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
-                    "extractor_args": {
-                        "youtube": {
-                            "player_client": ["android"],
-                            "player_skip": ["webpage", "configs"]
-                        }
-                    }
-                }
-                with yt_dlp.YoutubeDL(ydl_opts_fallback) as ydl:
-                    info = ydl.extract_info(url, download=False)
-                    return info
-            except Exception as e2:
-                logger.error(f"Fallback de basarisiz: {e2}")
-                return None
+            return None
     
     def download_video(self, url, video_info=None):
         logger.info(f"Video indiriliyor: {url}")
         
         os.makedirs(self.download_dir, exist_ok=True)
         
+        # Sadece Android client - en güvenli yöntem
         ydl_opts = {
             "format": self.quality,
             "outtmpl": os.path.join(self.download_dir, "%(uploader)s - %(title)s.%(ext)s"),
@@ -146,8 +136,13 @@ class YouTubeDownloader:
             "writesubtitles": True,
             "writeautomaticsub": True,
             "subtitleslangs": ["tr", "en"],
-            "cookies_from_browser": ("chrome", None, None, None),
-            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "user_agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android"],
+                    "player_skip": ["webpage", "configs"]
+                }
+            }
         }
         
         try:
@@ -164,43 +159,82 @@ class YouTubeDownloader:
             
         except Exception as e:
             logger.error(f"Video indirme hatasi {url}: {e}")
-            # Fallback without cookies
-            try:
-                logger.info("Cookie'siz indirme deneniyor...")
-                ydl_opts_fallback = {
-                    "format": self.quality,
-                    "outtmpl": os.path.join(self.download_dir, "%(uploader)s - %(title)s.%(ext)s"),
-                    "restrictfilenames": True,
-                    "noplaylist": True,
-                    "writeinfojson": True,
-                    "writesubtitles": True,
-                    "writeautomaticsub": True,
-                    "subtitleslangs": ["tr", "en"],
-                    "user_agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
-                    "extractor_args": {
-                        "youtube": {
-                            "player_client": ["android"],
-                            "player_skip": ["webpage", "configs"]
-                        }
-                    }
-                }
-                with yt_dlp.YoutubeDL(ydl_opts_fallback) as ydl:
-                    ydl.download([url])
-                
-                logger.info(f"Fallback ile video indirildi: {url}")
-                
-                if video_info:
-                    self.print_success_notification(video_info)
-                    self.save_download_stats(video_info)
-                
-                return True
-                
-            except Exception as e2:
-                logger.error(f"Fallback indirme de basarisiz {url}: {e2}")
-                return False
+            return False
     
+    def get_channel_latest_videos_rss(self, channel_url):
+        """RSS Feed ile video listesi al - Bot koruması yok!"""
+        logger.info(f"RSS Feed ile kanal kontrol ediliyor: {channel_url}")
+        
+        # Extract channel ID from URL
+        channel_id = None
+        if "/channel/" in channel_url:
+            channel_id = channel_url.split("/channel/")[1].split("/")[0]
+        else:
+            logger.error("Channel ID bulunamadi - sadece /channel/ URL'leri destekleniyor")
+            return []
+        
+        # YouTube RSS Feed URL
+        rss_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
+        logger.info(f"RSS URL: {rss_url}")
+        
+        try:
+            # RSS Feed al
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+            
+            response = requests.get(rss_url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            # XML parse et
+            root = ET.fromstring(response.content)
+            
+            # Namespace tanımları
+            namespaces = {
+                'atom': 'http://www.w3.org/2005/Atom',
+                'yt': 'http://www.youtube.com/xml/schemas/2015',
+                'media': 'http://search.yahoo.com/mrss/'
+            }
+            
+            videos = []
+            entries = root.findall('atom:entry', namespaces)
+            
+            for entry in entries[:self.max_videos]:
+                # Video ID
+                video_id = entry.find('yt:videoId', namespaces)
+                if video_id is not None:
+                    vid_id = video_id.text
+                    
+                    # Video title
+                    title_elem = entry.find('atom:title', namespaces)
+                    title = title_elem.text if title_elem is not None else "Unknown Title"
+                    
+                    # Channel name
+                    author_elem = entry.find('atom:author/atom:name', namespaces)
+                    uploader = author_elem.text if author_elem is not None else "Unknown Channel"
+                    
+                    videos.append({
+                        "id": vid_id,
+                        "title": title,
+                        "url": f"https://www.youtube.com/watch?v={vid_id}",
+                        "uploader": uploader
+                    })
+            
+            logger.info(f"RSS Feed ile {len(videos)} video bulundu!")
+            return videos
+            
+        except Exception as e:
+            logger.error(f"RSS Feed hatasi: {e}")
+            return []
     def get_channel_latest_videos(self, channel_url):
         logger.info(f"Kanal kontrol ediliyor: {channel_url}")
+        
+        # Önce RSS Feed dene - En stabil yöntem!
+        videos = self.get_channel_latest_videos_rss(channel_url)
+        if videos:
+            return videos
+        
+        logger.warning("RSS Feed basarisiz - Chrome cookies deneniyor...")
         
         # Handle URL warning
         if "/@" in channel_url:
