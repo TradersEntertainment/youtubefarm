@@ -1,2 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# İndirilen dosyalar
+downloads/
+*.mp4
+*.mkv
+*.webm
+*.m4a
+
+# Log dosyaları
+*.log
+downloader.log
+
+# JSON veritabanı dosyaları
+downloaded_videos.json
+download_stats.json
+
+# Environment variables
 .env
-state.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
