@@ -1,20 +1,29 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
-# Sistem bağımlılıkları
-RUN apt-get update && apt-get install -y ffmpeg libsm6 libxext6 \
-    libglib2.0-0 libgl1-mesa-glx libgtk-3-0 libnss3 libxss1 libasound2 \
-    libxcomposite1 libxrandr2 libxdamage1 libx11-xcb1 libxkbcommon0 \
-    curl unzip xvfb
+# Sistem güncellemeleri ve gerekli paketler
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Python paketleri
+# Çalışma dizini
+WORKDIR /app
+
+# Python bağımlılıklarını kopyala ve yükle
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Playwright Chromium kurulumu
-RUN pip install playwright && playwright install chromium
+# Uygulama dosyalarını kopyala
+COPY . .
 
-# Kod dosyaları
-COPY . /app
-WORKDIR /app
+# İndirme klasörünü oluştur
+RUN mkdir -p /app/downloads
 
-CMD ["python", "main.py"]
+# Log dosyaları için izinler
+RUN chmod 755 /app
+
+# Port (Render için gerekli ama kullanmayacağız)
+EXPOSE 10000
+
+# Varsayılan komut
+CMD ["python", "main.py", "monitor"]
