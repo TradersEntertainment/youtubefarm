@@ -101,21 +101,8 @@ class YouTubeDownloader:
         ydl_opts = {
             "quiet": True,
             "no_warnings": True,
-            "user_agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["android"],
-                    "player_skip": ["webpage", "configs"],
-                    "skip": ["hls", "dash"]
-                }
-            },
-            "http_headers": {
-                "User-Agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
-                "Accept": "*/*",
-                "Accept-Encoding": "gzip, deflate",
-                "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
-                "X-Goog-Api-Key": "AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w"
-            }
+            "cookies_from_browser": ("chrome", None, None, None),
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         }
         
         try:
@@ -124,7 +111,26 @@ class YouTubeDownloader:
                 return info
         except Exception as e:
             logger.error(f"Video bilgisi alinamadi {url}: {e}")
-            return None
+            # Fallback without cookies
+            try:
+                logger.info("Cookie'siz deneme yapiliyor...")
+                ydl_opts_fallback = {
+                    "quiet": True,
+                    "no_warnings": True,
+                    "user_agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
+                    "extractor_args": {
+                        "youtube": {
+                            "player_client": ["android"],
+                            "player_skip": ["webpage", "configs"]
+                        }
+                    }
+                }
+                with yt_dlp.YoutubeDL(ydl_opts_fallback) as ydl:
+                    info = ydl.extract_info(url, download=False)
+                    return info
+            except Exception as e2:
+                logger.error(f"Fallback de basarisiz: {e2}")
+                return None
     
     def download_video(self, url, video_info=None):
         logger.info(f"Video indiriliyor: {url}")
@@ -140,21 +146,8 @@ class YouTubeDownloader:
             "writesubtitles": True,
             "writeautomaticsub": True,
             "subtitleslangs": ["tr", "en"],
-            "user_agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["android"],
-                    "player_skip": ["webpage", "configs"],
-                    "skip": ["hls", "dash"]
-                }
-            },
-            "http_headers": {
-                "User-Agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
-                "Accept": "*/*",
-                "Accept-Encoding": "gzip, deflate",
-                "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
-                "X-Goog-Api-Key": "AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w"
-            }
+            "cookies_from_browser": ("chrome", None, None, None),
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         }
         
         try:
@@ -171,7 +164,40 @@ class YouTubeDownloader:
             
         except Exception as e:
             logger.error(f"Video indirme hatasi {url}: {e}")
-            return False
+            # Fallback without cookies
+            try:
+                logger.info("Cookie'siz indirme deneniyor...")
+                ydl_opts_fallback = {
+                    "format": self.quality,
+                    "outtmpl": os.path.join(self.download_dir, "%(uploader)s - %(title)s.%(ext)s"),
+                    "restrictfilenames": True,
+                    "noplaylist": True,
+                    "writeinfojson": True,
+                    "writesubtitles": True,
+                    "writeautomaticsub": True,
+                    "subtitleslangs": ["tr", "en"],
+                    "user_agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
+                    "extractor_args": {
+                        "youtube": {
+                            "player_client": ["android"],
+                            "player_skip": ["webpage", "configs"]
+                        }
+                    }
+                }
+                with yt_dlp.YoutubeDL(ydl_opts_fallback) as ydl:
+                    ydl.download([url])
+                
+                logger.info(f"Fallback ile video indirildi: {url}")
+                
+                if video_info:
+                    self.print_success_notification(video_info)
+                    self.save_download_stats(video_info)
+                
+                return True
+                
+            except Exception as e2:
+                logger.error(f"Fallback indirme de basarisiz {url}: {e2}")
+                return False
     
     def get_channel_latest_videos(self, channel_url):
         logger.info(f"Kanal kontrol ediliyor: {channel_url}")
@@ -193,7 +219,41 @@ class YouTubeDownloader:
         
         logger.info(f"Final URL: {channel_url}")
         
+        # First try with Chrome cookies
         ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "extract_flat": True,
+            "playlistend": self.max_videos,
+            "cookies_from_browser": ("chrome", None, None, None),
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        }
+        
+        try:
+            logger.info("Chrome cookie'leri ile deneniyor...")
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(channel_url, download=False)
+                if "entries" in info:
+                    videos = []
+                    for entry in info["entries"][:self.max_videos]:
+                        if entry and entry.get("id") and len(entry.get("id", "")) == 11:
+                            videos.append({
+                                "id": entry.get("id"),
+                                "title": entry.get("title"),
+                                "url": f"https://www.youtube.com/watch?v={entry.get('id')}",
+                                "uploader": info.get("uploader", "Unknown")
+                            })
+                    logger.info(f"Chrome cookie'leri ile {len(videos)} video bulundu!")
+                    return videos
+                else:
+                    logger.warning(f"Chrome cookie'leri ile videolara erisilemedi")
+                    
+        except Exception as e:
+            logger.warning(f"Chrome cookie'leri basarisiz: {e}")
+        
+        # Fallback to Android client
+        logger.info("Fallback: Android client deneniyor...")
+        ydl_opts_fallback = {
             "quiet": True,
             "no_warnings": True,
             "extract_flat": True,
@@ -202,39 +262,32 @@ class YouTubeDownloader:
             "extractor_args": {
                 "youtube": {
                     "player_client": ["android"],
-                    "player_skip": ["webpage", "configs"],
-                    "skip": ["hls", "dash"]
+                    "player_skip": ["webpage", "configs"]
                 }
-            },
-            "http_headers": {
-                "User-Agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; TR) gzip",
-                "Accept": "*/*",
-                "Accept-Encoding": "gzip, deflate",
-                "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8"
             }
         }
         
         try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            with yt_dlp.YoutubeDL(ydl_opts_fallback) as ydl:
                 info = ydl.extract_info(channel_url, download=False)
                 if "entries" in info:
                     videos = []
                     for entry in info["entries"][:self.max_videos]:
                         if entry and entry.get("id") and len(entry.get("id", "")) == 11:
-                            # Sadece 11 karakter olan video ID'lerini al
                             videos.append({
                                 "id": entry.get("id"),
                                 "title": entry.get("title"),
                                 "url": f"https://www.youtube.com/watch?v={entry.get('id')}",
                                 "uploader": info.get("uploader", "Unknown")
                             })
+                    logger.info(f"Android client ile {len(videos)} video bulundu!")
                     return videos
                 else:
-                    logger.warning(f"Kanal videolarina erisilemedi: {channel_url}")
+                    logger.warning(f"Android client ile videolara erisilemedi")
                     return []
                     
         except Exception as e:
-            logger.error(f"Kanal video listesi alinamadi {channel_url}: {e}")
+            logger.error(f"Android client de basarisiz: {e}")
             return []
     
     def load_downloaded_videos(self):
