@@ -202,6 +202,8 @@ class YouTubeDownloader:
     
     def monitor_channels(self):
         logger.info("Kanal monitorleme baslatildi")
+        logger.info(f"Environment YOUTUBE_CHANNELS: {os.getenv('YOUTUBE_CHANNELS', 'TANIMSIZ')}")
+        logger.info(f"Kullanilacak kanallar: {self.channels}")
         
         downloaded_videos = self.load_downloaded_videos()
         new_downloads = 0
