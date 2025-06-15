@@ -27,16 +27,21 @@ class YouTubeDownloader:
         self.max_videos = int(os.getenv("MAX_VIDEOS", "5"))
         self.quality = os.getenv("VIDEO_QUALITY", "best[height<=720]")
         
+        # Manuel YouTube cookies - Bot korumasını aşar!
+        self.youtube_cookies = os.getenv("YOUTUBE_COOKIES", "")
+        
         Path(self.download_dir).mkdir(parents=True, exist_ok=True)
         self.stats_file = "download_stats.json"
         
         logger.info("YouTube Downloader baslatildi")
         logger.info(f"Indirme klasoru: {self.download_dir}")
         logger.info(f"Monitor edilecek kanallar: {len(self.channels)}")
+        logger.info(f"Manuel cookies: {'AKTIF' if self.youtube_cookies else 'YOK'}")
         
         print("YouTube Downloader hazir!")
         print(f"Indirme klasoru: {self.download_dir}")
         print(f"Takip edilen kanal sayisi: {len(self.channels)}")
+        print(f"Cookie durumu: {'✅ AKTIF' if self.youtube_cookies else '❌ YOK'}")
     
     def get_channels_to_monitor(self):
         channels = []
@@ -99,8 +104,76 @@ class YouTubeDownloader:
         print(f"Indirilme Zamani: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print("="*60 + "\n")
     
+    def create_cookie_jar(self):
+        """Manuel cookie'lerden cookie jar oluştur"""
+        if not self.youtube_cookies:
+            return None
+            
+        try:
+            import tempfile
+            import http.cookiejar
+            
+            # Cookie jar oluştur
+            cookie_jar = http.cookiejar.MozillaCookieJar()
+            
+            # JSON parse et
+            cookies_dict = json.loads(self.youtube_cookies)
+            
+            # Her cookie için entry oluştur
+            for name, value in cookies_dict.items():
+                cookie_jar.set_cookie(http.cookiejar.Cookie(
+                    version=0, name=name, value=value,
+                    port=None, port_specified=False,
+                    domain='.youtube.com', domain_specified=True, domain_initial_dot=True,
+                    path='/', path_specified=True,
+                    secure=True, expires=None, discard=True, comment=None,
+                    comment_url=None, rest={}
+                ))
+            
+            # Temporary file'a kaydet
+            cookie_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False)
+            cookie_jar.save(cookie_file.name)
+            cookie_file.close()
+            
+            logger.info(f"Cookie jar olusturuldu: {len(cookies_dict)} cookie")
+            return cookie_file.name
+            
+        except Exception as e:
+            logger.error(f"Cookie jar olusturma hatasi: {e}")
+            return None
     def get_video_info(self, url):
-        # Sadece Android client - en basit yöntem
+        # Önce manuel cookie'ler ile dene
+        if self.youtube_cookies:
+            logger.info("Manuel cookie'ler ile video bilgisi aliniyor...")
+            cookie_file = self.create_cookie_jar()
+            if cookie_file:
+                ydl_opts = {
+                    "quiet": True,
+                    "no_warnings": True,
+                    "cookiefile": cookie_file,
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                }
+                
+                try:
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        info = ydl.extract_info(url, download=False)
+                        logger.info("Manuel cookie'ler ile video bilgisi BASARILI!")
+                        # Cookie file'ı temizle
+                        try:
+                            os.unlink(cookie_file)
+                        except:
+                            pass
+                        return info
+                except Exception as e:
+                    logger.warning(f"Manuel cookie'ler basarisiz: {e}")
+                    # Cookie file'ı temizle
+                    try:
+                        os.unlink(cookie_file)
+                    except:
+                        pass
+        
+        # Fallback: Android client
+        logger.info("Fallback: Android client deneniyor...")
         ydl_opts = {
             "quiet": True,
             "no_warnings": True,
@@ -121,12 +194,57 @@ class YouTubeDownloader:
             logger.error(f"Video bilgisi alinamadi {url}: {e}")
             return None
     
+    
     def download_video(self, url, video_info=None):
         logger.info(f"Video indiriliyor: {url}")
         
         os.makedirs(self.download_dir, exist_ok=True)
         
-        # Sadece Android client - en güvenli yöntem
+        # Önce manuel cookie'ler ile dene
+        if self.youtube_cookies:
+            logger.info("Manuel cookie'ler ile video indiriliyor...")
+            cookie_file = self.create_cookie_jar()
+            if cookie_file:
+                ydl_opts = {
+                    "format": self.quality,
+                    "outtmpl": os.path.join(self.download_dir, "%(uploader)s - %(title)s.%(ext)s"),
+                    "restrictfilenames": True,
+                    "noplaylist": True,
+                    "writeinfojson": True,
+                    "writesubtitles": True,
+                    "writeautomaticsub": True,
+                    "subtitleslangs": ["tr", "en"],
+                    "cookiefile": cookie_file,
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                }
+                
+                try:
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        ydl.download([url])
+                    
+                    logger.info(f"Manuel cookie'ler ile video BASARILI: {url}")
+                    
+                    if video_info:
+                        self.print_success_notification(video_info)
+                        self.save_download_stats(video_info)
+                    
+                    # Cookie file'ı temizle
+                    try:
+                        os.unlink(cookie_file)
+                    except:
+                        pass
+                    return True
+                    
+                except Exception as e:
+                    logger.warning(f"Manuel cookie'ler ile indirme basarisiz: {e}")
+                    # Cookie file'ı temizle
+                    try:
+                        os.unlink(cookie_file)
+                    except:
+                        pass
+        
+        # Fallback: Android client
+        logger.info("Fallback: Android client ile indirme deneniyor...")
         ydl_opts = {
             "format": self.quality,
             "outtmpl": os.path.join(self.download_dir, "%(uploader)s - %(title)s.%(ext)s"),
@@ -149,7 +267,7 @@ class YouTubeDownloader:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
             
-            logger.info(f"Video basariyla indirildi: {url}")
+            logger.info(f"Android client ile video indirildi: {url}")
             
             if video_info:
                 self.print_success_notification(video_info)
