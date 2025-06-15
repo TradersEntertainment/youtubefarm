@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-“””
-YouTube Video Downloader - Render Uyumlu
-MrBeast kanalından ve diğer kanallardan video indirme sistemi
-“””
+
 
 import os
 import sys
