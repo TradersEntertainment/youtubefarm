@@ -303,13 +303,13 @@ def cleanup_old_videos(self, days=7):
         
     except Exception as e:
         logger.error(f"Dosya temizleme hatası: {e}")
-```
+
 
 def main():
 “”“Ana fonksiyon”””
 logger.info(”=== YouTube Downloader Başlatılıyor ===”)
 
-```
+
 try:
     downloader = YouTubeDownloader()
     
@@ -366,7 +366,6 @@ except Exception as e:
     logger.error(f"Beklenmeyen hata: {e}")
     print(f"❌ Hata oluştu: {e}")
     sys.exit(1)
-```
 
 if **name** == “**main**”:
 main()
